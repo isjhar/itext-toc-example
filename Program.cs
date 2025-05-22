@@ -2,7 +2,6 @@
 using iText.Kernel.Events;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
-using iText.Kernel.Pdf.Action;
 using iText.Kernel.Pdf.Canvas.Draw;
 using iText.Layout;
 using iText.Layout.Element;
@@ -14,7 +13,7 @@ namespace TocFirstPageExample
     {
         public static readonly string DEST = "table_of_contents.pdf";
 
-        private List<Pair<string, Pair<string, int>>> _toc = new List<Pair<string, Pair<string, int>>>();
+        private readonly List<KeyValuePair<string, int>> _toc = new List<KeyValuePair<string, int>>();
 
         public static void Main(string[] args)
         {
@@ -29,21 +28,23 @@ namespace TocFirstPageExample
         {
             PdfFont font = PdfFontFactory.CreateFont(StandardFonts.TIMES_ROMAN);
             PdfDocument pdfDoc = new PdfDocument(new PdfWriter(dest));
+
             var pageNumberEventHandler = new PageNumberEventHandler(pdfDoc);
             pdfDoc.AddEventHandler(PdfDocumentEvent.END_PAGE, pageNumberEventHandler);
+
             Document document = new Document(pdfDoc);
             document
                 .SetTextAlignment(TextAlignment.JUSTIFIED)
                 .SetFont(font)
                 .SetFontSize(11);
 
-            AddPage(pdfDoc, document, _toc, "page1", "Page 1");
+            AddPage(pdfDoc, document, _toc, "Page 1");
             document.Add(new AreaBreak());
 
-            AddPage(pdfDoc, document, _toc, "page2", "Page 2");
+            AddPage(pdfDoc, document, _toc, "Page 2");
             document.Add(new AreaBreak());
 
-            AddPage(pdfDoc, document, _toc, "page3", "Page 3");
+            AddPage(pdfDoc, document, _toc, "Page 3");
             document.Add(new AreaBreak());
 
             CreateToc(document);
@@ -56,21 +57,18 @@ namespace TocFirstPageExample
             document.Close();
         }
 
-        private void AddPage(PdfDocument pdfDoc, Document document, List<Pair<string, Pair<string, int>>> toc, string name, string text)
+        private void AddPage(PdfDocument pdfDoc, Document document, List<KeyValuePair<string, int>> toc, string text)
         {
-            Pair<string, int> titlePage = new Pair<string, int>(text, pdfDoc.GetNumberOfPages());
-
             var p = new Paragraph(text);
             p.SetKeepTogether(true);
             p.SetFontSize(12)
-                .SetKeepWithNext(true)
-                .SetDestination(name)
-                // Add the current page number to the table of contents list
-                .SetNextRenderer(new UpdatePageRenderer(p, titlePage));
+                .SetKeepWithNext(true);
 
             document.Add(p);
 
-            toc.Add(new Pair<string, Pair<string, int>>(name, titlePage));
+            KeyValuePair<string, int> titlePage = new KeyValuePair<string, int>(text, pdfDoc.GetNumberOfPages());
+
+            toc.Add(titlePage);
         }
 
         private void CreateToc(Document document)
@@ -86,15 +84,14 @@ namespace TocFirstPageExample
 
             List<TabStop> tabStops = new List<TabStop>();
             tabStops.Add(new TabStop(580, TabAlignment.RIGHT, new DottedLine()));
-            foreach (Pair<string, Pair<string, int>> entry in _toc)
+            foreach (KeyValuePair<string, int> entry in _toc)
             {
-                Pair<string, int> text = entry.Value;
                 p = new Paragraph()
                     .AddTabStops(tabStops)
-                    .Add(text.Key)
+                    .Add(entry.Key)
                     .Add(new Tab())
-                    .Add(text.Value.ToString())
-                    .SetAction(PdfAction.CreateGoTo(entry.Key));
+                    .Add(entry.Value.ToString());
+
                 document.Add(p);
             }
         }
